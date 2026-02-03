@@ -133,31 +133,29 @@ ODV_colors <- c("#feb483", "#d31f2a", "#ffc000", "#27ab19", "#0db5e6", "#7139fe"
 
 #Function to calculate MLD based on density
 compute_mld <- function(depth, density, threshold = 0.01, max_ref_depth = 5) {if (length(depth) != length(density)) { stop("Depth and density vectors must be the same length.")}
-  ord <- order(depth)
-  depth <- depth[ord]
-  density <- density[ord]
-  ref_index <- which(depth <= max_ref_depth)
+
+#Sort by increase depth
+ord <- order(depth)
+depth <- depth[ord]
+density <- density[ord]
+
+#Find refernece density at shallowest depth 
+ref_index <- which(depth <= max_ref_depth)
   if (length(ref_index) == 0) {stop("No depth measurements shallower than max_ref_depth.")}
-  z_ref <- depth[max(ref_index)]
-  rho_ref <- density[max(ref_index)]
-  delta_rho <- density - rho_ref
-  exceed_indices <- which(delta_rho >= threshold)
+z_ref <- depth[max(ref_index)]
+rho_ref <- density[max(ref_index)]
+
+#Calculate density difference from reference
+delta_rho <- density - rho_ref
+
+#Find first depth where difference exceeds threshold
+exceed_indices <- which(delta_rho >= threshold)
   if (length(exceed_indices) == 0) {return(max(depth))} else {return(depth[exceed_indices[1]])}}
 
 den<-CTD[-c(383:433),] #remove 7/24 NA rows
 den<-den[,-c(3,4,5,7,8,9,10)] #remove other physical paramerters 
 
-mld_results <- den %>%
-  group_by(date) %>%
-  nest() %>%
-  mutate(
-    mld = map_dbl(data, ~ compute_mld(.x$depth, .x$density))
-  ) %>%
-  select(date, mld)
-
-print(mld_results)
-
-mld<-read.csv("Oceanographic/MLD.csv")
+mld <- compute_mld(depth, density)
 mld$Date<-as.Date(mld$Date, format = "%d-%b-%Y")%>%as.Date(mld$Date, format = "%d-%m-%Y")
 
 #Temperature ODV plot
