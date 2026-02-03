@@ -10,7 +10,7 @@ library(dplyr)
 library(tidyr)
 library(tibble)
 
-#load 18s taxonomy file - assigned with PR2 database
+#Load 18S taxonomy file - assigned with PR2 database
 taxonomy<-read_qza("18S-rRNA/tax/asv-taxo.qza")
 tax_tab<-taxonomy$data %>% #convert to data frame, tab separate and rename taxa levels, remove row with confidence values
   as.data.frame() %>%
@@ -18,20 +18,20 @@ tax_tab<-taxonomy$data %>% #convert to data frame, tab separate and rename taxa 
   column_to_rownames("Feature.ID") %>%
   dplyr::select(-Confidence)
 
-#load ASV count table
-table<-read_qza("18S-rRNA/dada2/table.qza")
+#Load ASV count table
+table<-read_qza("18S-rRNA/dada2/table18S.qza")
 count_tab<-table$data %>% as.data.frame() #convert to data frame
 
-#load metadata file
+#Load metadata file
 metadata<-read.table("18S-rRNA/metadata/metadata18s.tsv", sep="\t", header=TRUE)
 
 rownames(metadata)<-metadata$sample.id
 
-#merge into phyloseq
+#Merge into phyloseq
 ps<-phyloseq(tax_table(as.matrix(tax_tab)), otu_table(count_tab,taxa_are_rows = T),sample_data(metadata))
 sample_sums(ps)
 
-#remove unwanted groups 
+#Remove unwanted groups 
 ps_new=subset_taxa(ps, Supergroup!="Obazoa" |is.na(Supergroup))
 sample_sums(ps_new)
 ps_new=subset_taxa(ps_new, Division!="Proteobacteria" |is.na(Division))
@@ -42,13 +42,13 @@ ps_new=name_na_taxa(ps_new) #adds an unassigned label to better identify lowest 
 
 sample_sums(ps_new)
 
-#remove singletons (ASVs present once)
+#Remove singletons (ASVs present once)
 ps_filt_18S = filter_taxa(ps_new, function (x) {sum(x) > 1}, prune=TRUE)
 
-#remove low counts (ASVs less than 5)
+#Remove low counts (ASVs less than 5)
 ps_filt_18S = filter_taxa(ps_filt_18S, function (x) {sum(x) > 5}, prune=TRUE)
 
-#estimate minimum mean, and maximum reads counts
+#Estimate minimum mean, and maximum reads counts
 ps_min<-min(sample_sums(ps_filt_18S))
 ps_mean<-mean(sample_sums(ps_filt_18S))
 ps_max<-max(sample_sums(ps_filt_18S))
@@ -57,21 +57,21 @@ ps_sum<-sum(sample_sums(ps_filt_18S))
 rare_18S <- ggrare(ps_filt_18S, step = 100, plot = FALSE, parallel = FALSE, se = FALSE)
 rare_18S + theme_bw()
 
-#rarefy to even sampling depth
+#Rarefy to even sampling depth
 ps_rare<-rarefy_even_depth(ps_filt_18S, sample.size = min(sample_sums(ps_filt_18S)), rngseed = 711, replace = TRUE, trimOTUs = TRUE, verbose = TRUE)
 sample_sums(ps_rare)
 
-#rename ASVs in seqential order
+#Rename ASVs in seqential order
 taxa_names(ps_rare)<-paste0("ASV", seq(ntaxa(ps_rare)))
 
-#export ASV information 
+#Export ASV information 
 otu_filt=as(otu_table(ps_rare), "matrix")
 tax_filt=as(tax_table(ps_rare), "matrix")
 merge_filt<-cbind(otu_filt, tax_filt)
 write.csv(merge_filt, file="Table_18sMerge.csv")
 
 #GGPlot2
-#relative abundance at class level~top10
+#Relative abundance at class level~top10
 ps_class<-tax_glom(ps_rare, taxrank = "Class") #agglomerate to class level
 ps_class_trans<-transform_sample_counts(ps_class, function(x) 100*x/sum(x)) #transform to relative abundance
 plot<- ps_class_trans %>%
@@ -87,9 +87,9 @@ p$data$Class <- factor(p$data$Class, levels = rev(c("Dinophyceae","Mediophyceae"
 p$data$CollectionDate <- factor(p$data$CollectionDate, levels = c("23-Jun-23","5-Jul-23", "11-Jul-23","24-Jul-23", "1-Aug-23", "7-Aug-23"),labels = c("June 23","July 05", "July 11","July 24", "August 01", "August 07")) # Set order of transects
 p$data$Depth <-factor(p$data$Depth,levels = c("1.5","2","4","5","6","10","13","14","15"), labels = c("1.5m","2m","4m","5m","6m","10m","13m","14m","15m")) #change facet labels
 
-p +geom_bar(aes(), stat = "identity", position = "fill", width = 1.5) +scale_x_continuous(labels = scales::label_percent(scale = 100, prefix = "", suffix = ""))+scale_fill_manual(values = rev(c("#44AA99", "#F5793A", "#882255", "#88CCEE", "#332288","#117733", "#DDCC77", "#AA4499", "#F7CDA4", "#A5CFCC", "#757575"))) +scale_color_manual(values = rev(c("#44AA99", "#F5793A", "#882255", "#88CCEE", "#332288","#117733", "#DDCC77", "#AA4499", "#F7CDA4", "#A5CFCC", "#757575"))) +facet_nested(CollectionDate + Depth ~ .) +labs(x = "Relative Abundance (%)", y = "") +guides(fill = guide_legend(nrow = 11, ncol = 1)) +theme_bw(base_size = 13) +theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),axis.text.x = element_text(angle = 0, vjust = 1, hjust = 1),axis.title.x = element_text(size = 12),axis.title.y = element_text(size = 12),strip.text.y = element_text(size = 9, angle = 0),legend.position = "right",panel.border = element_rect(color = "black", fill = NA, linewidth = 0.5))
+p+geom_bar(aes(), stat = "identity", position = "fill", width = 1.5) +scale_x_continuous(labels = scales::label_percent(scale = 100, prefix = "", suffix = ""))+scale_fill_manual(values = rev(c("#44AA99", "#F5793A", "#882255", "#88CCEE", "#332288","#117733", "#DDCC77", "#AA4499", "#F7CDA4", "#A5CFCC", "#757575"))) +scale_color_manual(values = rev(c("#44AA99", "#F5793A", "#882255", "#88CCEE", "#332288","#117733", "#DDCC77", "#AA4499", "#F7CDA4", "#A5CFCC", "#757575"))) +facet_nested(CollectionDate + Depth ~ .) +labs(x = "Relative Abundance (%)", y = "") +guides(fill = guide_legend(nrow = 11, ncol = 1)) +theme_bw(base_size = 13) +theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),axis.text.x = element_text(angle = 0, vjust = 1, hjust = 1),axis.title.x = element_text(size = 12),axis.title.y = element_text(size = 12),strip.text.y = element_text(size = 9, angle = 0),legend.position = "right",panel.border = element_rect(color = "black", fill = NA, linewidth = 0.5))
 
-#relative abundance plot within class Dinophyceae~by family
+#Relative abundance plot within class Dinophyceae~by family
 ps_dino=subset_taxa(ps_rare, Class=="Dinophyceae", prune = T) #subset class dinophyceae
 dino_fam<-tax_glom(ps_dino, taxrank = "Family") #agglomerate to family level
 ps_dino_trans<-transform_sample_counts(dino_fam, function(x) 100*x/sum(x)) #transform to relative abundance
@@ -107,7 +107,7 @@ p1$data$CollectionDate <- factor(p1$data$CollectionDate,levels = c("23-Jun-23","
 p1$data$Depth <-factor(p1$data$Depth,levels = c("1.5","2","4","5","6","10","13","14","15"), labels = c("1.5m","2m","4m","5m","6m","10m","13m","14m","15m")) #change facet labels
 p1+geom_bar(aes(), stat = "identity", position = "fill", width = 1.5) +scale_x_continuous(labels = scales::label_percent(scale = 100, prefix = "", suffix = ""))+scale_fill_manual(values = rev(c("#44AA99", "#F5793A", "#882255", "#88CCEE", "#332288","#117733", "#DDCC77", "#AA4499", "#757575"))) +scale_color_manual(values = rev(c("#44AA99", "#F5793A", "#882255", "#88CCEE", "#332288","#117733", "#DDCC77", "#AA4499", "#757575"))) +facet_nested(CollectionDate + Depth ~ .) +labs(x = "Relative Abundance (%)", y = "") +guides(fill = guide_legend(nrow = 11, ncol = 1)) +theme_bw(base_size = 13) +theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),axis.text.x = element_text(angle = 0, vjust = 1, hjust = 1),axis.title.x = element_text(size = 12),axis.title.y = element_text(size = 12),strip.text.y = element_text(size = 9, angle = 0),legend.position = "right",panel.border = element_rect(color = "black", fill = NA, linewidth = 0.5))
 
-#relative abundance within class Dinophyceae~genus~top5
+#Relative abundance within class Dinophyceae~genus~top5
 ps_genus<-tax_glom(ps_dino, taxrank = "Genus") #agglomerate to genus level
 ps_genus_trans<-transform_sample_counts(ps_genus, function(x) 100*x/sum(x)) #transform to relative abundance
 plot2<- ps_genus_trans %>%
@@ -141,7 +141,7 @@ bray=phyloseq::distance(ps_rare, method = "bray")
 adonis2(phyloseq::distance(ps_rare, method = "bray")~CollectionDate,data = metadata, permutations = 9999)
 pairwise.adonis(as.dist(bray), as.factor(metadata$CollectionDate),p.adjust.m = 'bonferroni', perm = 9999)
 
-#alpha diversity between collection dates (or depth)
+#Alpha diversity between collection dates
 ps_rich<-estimate_richness(ps_rare, measures = c("Observed", "Shannon")) #estimate richness and Shannon diversity index
 Date=sample_data(ps_rare)$CollectionDate #define different collection dates
 Depth=sample_data(ps_rare)$WaterCol
@@ -149,8 +149,6 @@ rich_all<-data.frame(ps_rich,Date,Depth) #merge diversity values with collection
 rich_all$Date=as.factor(rich_all$Date)
 ad<-ggplot(rich_all, aes(x=Date, y=Shannon, color=Date, shape =Depth ))
 ad$data$Date<-factor(ad$data$Date,levels = c("23-Jun-23","5-Jul-23", "11-Jul-23","24-Jul-23", "1-Aug-23", "7-Aug-23"),labels = c("June 23","July 05", "July 11","July 24", "August 01", "August 07")) #order dates
-ad$data$Depth<-factor(ad$data$Depth,levels = c("surface", "mid", "deep"), labels = c("Surface", "Mid", "Deep"))
-#point plot ~ by date and water column depth
 
 ad +ylab("Shannon Diversity Index") +theme(legend.position = "right",axis.title.x = element_blank(),axis.text.x = element_blank(),axis.ticks.x = element_blank(),panel.grid.major = element_blank(),panel.grid.minor = element_blank(),panel.background = element_blank(),panel.border = element_rect(color = "black", fill = NA, size = 1),plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm")) +geom_point(aes(fill = Date, shape = Depth),color = "black",size = 2.5,stroke = 0.8) +scale_shape_manual(values = c("Surface" = 21, "Mid" = 22, "Deep" = 23))+guides(fill = guide_legend(title = "Date",override.aes = list(color = "black", fill = scales::hue_pal()(6), shape = 21)),shape = guide_legend(title = "Depth"))
 
@@ -165,7 +163,7 @@ ps_rel_subset = subset_samples(ps_rel, sample_names(ps_rel) != "18s-v9-43" & sam
 bray = phyloseq::distance(ps_rel_subset, method="bray")
 bray.table <- as.matrix(dist(bray)) 
 
-#run dbRDA for 18s
+#Run dbRDA for 18s
 metadata<-as(sample_data(ps_rel_subset),"data.frame") #export metadata from phyloseq object
 metadata[,10:18]<-log1p((metadata[10:18])) #log transform metadata variables
 meta=metadata[,c(10:18)]
@@ -176,7 +174,7 @@ rownames(merge)<-NULL
 species=merge[,10:57] #separate species (bray) and environment (variables) for dbRDA
 environment=merge[,1:9]
 
-#run dbRDA using bray distance and log transformed metadata
+#Run dbRDA using bray distance and log transformed metadata
 dbRDA=dbrda(species~.,data=environment,distance = "bray")
 dbrda_null <- dbrda(species ~ 1, data = environment)
 # Stepwise selection based on permutation tests
@@ -186,10 +184,10 @@ vif_values <- vif.cca(step_dbrda)
 print(vif_values)
 
 simple_vars <- c("NO3", "PO4", "DON", "Salinity", "Temp","Beam.Attenuation", "DOP") 
-# Run simplified dbRDA
+#Run simplified dbRDA
 dbrda_simple <- dbrda(species ~ ., data = environment[, simple_vars], distance = "bray")
 
-# Summary and VIF
+#Summary and VIF
 summary(dbrda_simple)
 vif.cca(dbrda_simple)
 dbrda_final <- dbrda(species ~ NO3 + PO4 + DOP + DON + Salinity+ Temp + Beam.Attenuation, data = environment, distance = "bray")
@@ -200,7 +198,7 @@ anova(dbrda_final, permutations = 4999)
 anova(dbrda_final, by = "term", permutations = 4999)
 anova(dbrda_final, by = "axis", permutations = 4999)
 
-#extract sites and species scores
+#Extract sites and species scores
 scores_dbRDA=vegan::scores(dbrda_final)
 site_scores=scores_dbRDA$sites
 species_scores=scores_dbRDA$sites
@@ -221,12 +219,13 @@ arrowdf<-arrowdf[-c(3),]
 arrow_map<-aes(xend=dbRDA1, yend=dbRDA2, x=0,y=0,shape=NULL, color=NULL)
 label_map<-aes(x=1.2*dbRDA1, y=1.12*dbRDA2, shape=NULL, color=NULL, label=labels)
 arrowhead=arrow(length = unit(0.01,"npc"))
-# Extract the proportion of constrained inertia (variance) for each axis
+                                 
+#Extract the proportion of constrained inertia (variance) for each axis
 eig_vals <- summary(dbrda_final)$cont$importance
 var1 <- round(eig_vals[2, 1] * 100, 1)  # dbRDA1
 var2 <- round(eig_vals[2, 2] * 100, 1)  # dbRDA2
 
 db$data$CollectionDate<-factor(db$data$CollectionDate,levels = c("23-Jun-23","5-Jul-23", "11-Jul-23","24-Jul-23", "1-Aug-23", "7-Aug-23"),labels = c("June 23","July 05", "July 11","July 24", "August 01", "August 07"))
 db$data$WaterCol<-factor(db$data$WaterCol,levels = c("surface", "mid", "deep"), labels = c("Surface", "Mid", "Deep"))
-db +geom_point(aes(fill = CollectionDate, shape = WaterCol),color = "black",size = 2.5,stroke = 0.8) +geom_vline(xintercept = 0, color="grey70", linetype=2) +geom_hline(yintercept = 0, color="grey70", linetype=2) +theme_bw() +geom_segment(mapping = arrow_map, size=.3, data=arrowdf, arrow = arrowhead) +geom_text(mapping = label_map, size=3, data=arrowdf, show.legend=FALSE) +labs(fill = "Date",shape = "Depth",x = paste0("dbRDA1 (", var1, "%)"),y = paste0("dbRDA2 (", var2, "%)")) +scale_shape_manual(values = c("Surface" = 21, "Mid" = 22, "Deep" = 23)) +guides(fill = guide_legend(title = "Date",override.aes = list(shape = 21,stroke = 0.8,color = "black")),shape = guide_legend(title = "Depth")) +theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),panel.background = element_blank())
+db+geom_point(aes(fill = CollectionDate, shape = WaterCol),color = "black",size = 2.5,stroke = 0.8) +geom_vline(xintercept = 0, color="grey70", linetype=2) +geom_hline(yintercept = 0, color="grey70", linetype=2) +theme_bw() +geom_segment(mapping = arrow_map, size=.3, data=arrowdf, arrow = arrowhead) +geom_text(mapping = label_map, size=3, data=arrowdf, show.legend=FALSE) +labs(fill = "Date",shape = "Depth",x = paste0("dbRDA1 (", var1, "%)"),y = paste0("dbRDA2 (", var2, "%)")) +scale_shape_manual(values = c("Surface" = 21, "Mid" = 22, "Deep" = 23)) +guides(fill = guide_legend(title = "Date",override.aes = list(shape = 21,stroke = 0.8,color = "black")),shape = guide_legend(title = "Depth")) +theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank(),panel.background = element_blank())
 
